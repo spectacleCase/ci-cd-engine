@@ -11,7 +11,7 @@ import (
 )
 
 // Analyze 解析文件
-func Analyze(filename string) (map[string]system.Stage, error) {
+func Analyze(filename string) (*system.CiCdConfig, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		global.CLog.Error("failed to open file:", zap.Error(err))
@@ -29,9 +29,13 @@ func Analyze(filename string) (map[string]system.Stage, error) {
 		global.CLog.Error("failed to open file:", zap.Error(err))
 		return nil, err
 	}
+	return &config, nil
+}
+
+func AnalyzeToMap(conf system.CiCdConfig) (map[string]system.Stage, error) {
 	stageMap := make(map[string]system.Stage)
 
-	for _, stage := range config.Stages {
+	for _, stage := range conf.Stages {
 		stageMap[stage.Name] = stage
 	}
 	return stageMap, nil

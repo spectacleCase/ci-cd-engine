@@ -2,10 +2,13 @@ package system
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/spectacleCase/ci-cd-engine/common"
 	"github.com/spectacleCase/ci-cd-engine/global"
 	system "github.com/spectacleCase/ci-cd-engine/models/system"
-	"log"
+	"go.uber.org/zap"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,7 +31,12 @@ func NewTaskManager(repoPath string, pollInterval time.Duration, queueSize int) 
 // Start 启动任务管理器
 func Start(ctx context.Context) {
 	// 启动仓库轮询
-	go pollRepositoryChanges(ctx)
+	go func() {
+		err := pollRepositoryChanges(ctx)
+		if err != nil {
+
+		}
+	}()
 
 	// 启动任务消费者
 	go consumeTasks(ctx)
@@ -41,16 +49,16 @@ func AddTask(task *system.Task) error {
 	defer global.CTaskManager.Mu.Unlock()
 
 	if _, exists := global.CTaskManager.Tasks[task.ID]; exists {
-		return fmt.Errorf("task with ID %s already exists", task.ID)
+		return errors.New("task already exists")
+
 	}
 
-	task.Status = "queued"
+	task.Status = common.StatusQueued
 	task.CreatedAt = time.Now()
 	task.UpdatedAt = time.Now()
 
 	global.CTaskManager.Tasks[task.ID] = task
 	global.CTaskManager.Queue <- task
-
 	return nil
 }
 
@@ -61,7 +69,7 @@ func GetTask(id string) (*system.Task, error) {
 
 	task, exists := global.CTaskManager.Tasks[id]
 	if !exists {
-		return nil, fmt.Errorf("task not found")
+		return nil, errors.New("task not found")
 	}
 
 	return task, nil
@@ -81,7 +89,7 @@ func ListTasks() []*system.Task {
 }
 
 // pollRepositoryChanges 轮询仓库变化
-func pollRepositoryChanges(ctx context.Context) {
+func pollRepositoryChanges(ctx context.Context) error {
 	ticker := time.NewTicker(global.CTaskManager.PollInterval)
 	defer ticker.Stop()
 
@@ -90,12 +98,11 @@ func pollRepositoryChanges(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		case <-ticker.C:
 			// 检查仓库变化
 			hash, err := getGitRepoHash(global.CTaskManager.RepoPath)
 			if err != nil {
-				log.Printf("Error getting repo hash: %v", err)
 				continue
 			}
 
@@ -105,18 +112,18 @@ func pollRepositoryChanges(ctx context.Context) {
 			}
 
 			if hash != lastHash {
-				log.Printf("Repository changed (old: %s, new: %s)", lastHash[:8], hash[:8])
 				lastHash = hash
 
 				// 创建仓库变化任务
 				task := &system.Task{
-					ID:      fmt.Sprintf("repo-%d", time.Now().UnixNano()),
-					Name:    "repository_change",
-					Payload: fmt.Sprintf(`{"commit_hash": "%s"}`, hash),
+					ID:   fmt.Sprintf("repo-%d", time.Now().UnixNano()),
+					Name: "repository_change",
+					// todo 添加任务
+					//Payload: fmt.Sprintf(`{"commit_hash": "%s"}`, hash),
 				}
 
 				if err := AddTask(task); err != nil {
-					log.Printf("Error adding repo change task: %v", err)
+					return err
 				}
 			}
 		}
@@ -138,22 +145,25 @@ func consumeTasks(ctx context.Context) {
 
 // processTask 处理单个任务
 func processTask(task *system.Task) {
+	global.CLog.Info("process task", zap.String("id", task.ID))
 	global.CTaskManager.Mu.Lock()
-	task.Status = "processing"
+	task.Status = common.StatusRunning
 	task.UpdatedAt = time.Now()
 	global.CTaskManager.Mu.Unlock()
-
-	log.Printf("Processing task %s: %s", task.ID, task.Name)
 
 	// 模拟任务处理
 	time.Sleep(2 * time.Second)
-
+	var newConfig system.CiCdConfig
+	if err := json.Unmarshal(task.Payload, &newConfig); err != nil {
+		global.CLog.Error("JSON反序列化失败", zap.String("payload", string(task.Payload)))
+	}
+	stageMap, _ := AnalyzeToMap(newConfig)
+	AssemblyLineProject(stageMap["Build"], stageMap["Deploy"])
 	global.CTaskManager.Mu.Lock()
-	task.Status = "completed"
+	task.Status = common.StatusCompleted
 	task.UpdatedAt = time.Now()
 	global.CTaskManager.Mu.Unlock()
-
-	log.Printf("Completed task %s: %s", task.ID, task.Name)
+	global.CLog.Info("执行成功")
 }
 
 // getGitRepoHash 获取Git仓库当前hash
@@ -180,7 +190,7 @@ func InitTaskManager() (context.Context, context.CancelFunc) {
 	// 解析为绝对路径
 	absRepoPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		log.Fatalf("Error getting absolute path: %v", err)
+		global.CLog.Error("Error getting absolute path", zap.Error(err))
 	}
 
 	// 创建任务管理器
