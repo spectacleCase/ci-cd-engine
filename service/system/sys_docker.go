@@ -12,6 +12,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spectacleCase/ci-cd-engine/global"
+	system "github.com/spectacleCase/ci-cd-engine/models/system"
 	"go.uber.org/zap"
 	"io"
 	"log"
@@ -31,7 +32,7 @@ func InitDockerCli() {
 }
 
 // AssemblyLineProject 组装项目流水线
-func AssemblyLineProject(build Stage, deploy Stage) {
+func AssemblyLineProject(build system.Stage, deploy system.Stage) {
 	ctx := Inspect()
 
 	// 1. 拉取 Python 3.9 镜像
@@ -160,14 +161,14 @@ func CopyFilesToContainer(containerID, srcPath, destPath string) {
 
 	files, err := os.ReadDir(srcPath)
 	if err != nil {
-		global.C_LOG.Error("读取目录失败", zap.Error(err))
+		global.CLog.Error("读取目录失败", zap.Error(err))
 	}
 
 	for _, file := range files {
 		filePath := fmt.Sprintf("%s/%s", srcPath, file.Name())
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
-			global.C_LOG.Error("无法读取文件信息", zap.Error(err))
+			global.CLog.Error("无法读取文件信息", zap.Error(err))
 			continue
 		}
 
@@ -178,16 +179,16 @@ func CopyFilesToContainer(containerID, srcPath, destPath string) {
 		}
 
 		if err := tw.WriteHeader(hdr); err != nil {
-			global.C_LOG.Error("写入 tar 头失败", zap.Error(err))
+			global.CLog.Error("写入 tar 头失败", zap.Error(err))
 		}
 
 		f, err := os.Open(filePath)
 		if err != nil {
-			global.C_LOG.Error("打开文件失败", zap.Error(err))
+			global.CLog.Error("打开文件失败", zap.Error(err))
 		}
 
 		if _, err := io.Copy(tw, f); err != nil {
-			global.C_LOG.Error("复制文件失败", zap.Error(err))
+			global.CLog.Error("复制文件失败", zap.Error(err))
 		}
 		//f.Close()
 		Close(f)
@@ -199,18 +200,18 @@ func CopyFilesToContainer(containerID, srcPath, destPath string) {
 	// 复制到容器
 	err = cli.CopyToContainer(ctx, containerID, destPath, &buf, container.CopyToContainerOptions{})
 	if err != nil {
-		global.C_LOG.Error("文件复制失败", zap.Error(err))
+		global.CLog.Error("文件复制失败", zap.Error(err))
 	}
-	global.C_LOG.Info("文件成功复制到容器")
+	global.CLog.Info("文件成功复制到容器")
 }
 
 // StartContainerWithFiles 启动容器
 func StartContainerWithFiles(conf *container.Config, ctx context.Context, hostConfig *container.HostConfig, containerID string) {
 	// 启动容器
 	if err := global.DockerCli.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
-		global.C_LOG.Error("启动容器失败:", zap.Error(err))
+		global.CLog.Error("启动容器失败:", zap.Error(err))
 	}
-	global.C_LOG.Info("启动容器成功:", zap.String("Image", conf.Image))
+	global.CLog.Info("启动容器成功:", zap.String("Image", conf.Image))
 	return
 }
 
@@ -221,7 +222,7 @@ func Inspect() context.Context {
 	}
 	ctx := context.Background()
 	if _, err := global.DockerCli.Ping(ctx); err != nil {
-		global.C_LOG.Error("无法连接 Docker 守护进程: %v\n请确保 Docker 服务正在运行", zap.Error(err))
+		global.CLog.Error("无法连接 Docker 守护进程: %v\n请确保 Docker 服务正在运行", zap.Error(err))
 	}
 	return ctx
 }
@@ -230,10 +231,10 @@ func Inspect() context.Context {
 func Pull(imageName string, ctx context.Context) {
 	reader, err := global.DockerCli.ImagePull(ctx, imageName, image.PullOptions{})
 	if err != nil {
-		global.C_LOG.Error("拉取镜像失败", zap.Error(err))
+		global.CLog.Error("拉取镜像失败", zap.Error(err))
 	}
 	if _, err := io.Copy(os.Stdout, reader); err != nil {
-		global.C_LOG.Error("读取镜像拉取输出时出错:", zap.Error(err))
+		global.CLog.Error("读取镜像拉取输出时出错:", zap.Error(err))
 	}
 	Close(reader)
 }
@@ -241,9 +242,9 @@ func Pull(imageName string, ctx context.Context) {
 // ClearContainer 清理容器
 func ClearContainer(resp container.CreateResponse, ctx context.Context) {
 	if err := global.DockerCli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true}); err != nil {
-		global.C_LOG.Error("删除容器失败:", zap.Error(err))
+		global.CLog.Error("删除容器失败:", zap.Error(err))
 	} else {
-		global.C_LOG.Info("容器已清除")
+		global.CLog.Info("容器已清除")
 	}
 }
 

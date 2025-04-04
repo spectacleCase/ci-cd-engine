@@ -3,7 +3,7 @@ package v1
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/spectacleCase/ci-cd-engine/models/system"
+	"github.com/spectacleCase/ci-cd-engine/service/system"
 )
 
 func DockerTest() gin.HandlerFunc {
