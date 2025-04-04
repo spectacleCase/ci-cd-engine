@@ -11,6 +11,7 @@ var Config *Conf
 type Conf struct {
 	System *System
 	Zap    *Zap
+	Mysql  *Mysql
 }
 
 // InitConfig 初始化配置

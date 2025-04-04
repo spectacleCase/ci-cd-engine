@@ -5,6 +5,7 @@ import (
 	"github.com/spectacleCase/ci-cd-engine/config"
 	"github.com/spectacleCase/ci-cd-engine/core"
 	"github.com/spectacleCase/ci-cd-engine/global"
+	initialize "github.com/spectacleCase/ci-cd-engine/initialize"
 	"github.com/spectacleCase/ci-cd-engine/service/system"
 	"github.com/spectacleCase/ci-cd-engine/web/routes"
 	"go.uber.org/zap"
@@ -31,6 +32,7 @@ func loading() {
 	system.InitDockerCli()
 	global.CLog = core.Zap() // 初始化zap日志库
 	zap.ReplaceGlobals(global.CLog)
+	initialize.InitMySQL()
 	ctx, _ := system.InitTaskManager()
 	system.Start(ctx)
 	//defer cancel()

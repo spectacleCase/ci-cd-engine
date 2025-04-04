@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spectacleCase/ci-cd-engine/common"
+	"github.com/spectacleCase/ci-cd-engine/initialize"
 	moSystem "github.com/spectacleCase/ci-cd-engine/models/system"
 	system "github.com/spectacleCase/ci-cd-engine/service/system"
-	"time"
 )
 
 func DockerTest() gin.HandlerFunc {
@@ -18,12 +18,14 @@ func DockerTest() gin.HandlerFunc {
 		} else {
 			jsonString, _ := json.Marshal(ciCdConfig)
 			task := &moSystem.Task{
-				ID:        "1",
-				Name:      "后面添加git分支信息",
-				Payload:   jsonString,
-				Status:    common.StatusPending,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+				Name:    "后面添加git分支信息",
+				Payload: jsonString,
+				Status:  common.StatusPending,
+			}
+			db := initialize.NewDBClient(c)
+			err = db.Create(task).Error
+			if err != nil {
+				return
 			}
 			_ = system.AddTask(task)
 
