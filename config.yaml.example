@@ -1,0 +1,12 @@
+system:
+  HttpPort: ":11250"
+zap:
+  level: info
+  prefix: '[github.com/spectacleCase/ci-cd-engine]'
+  format: console
+  director: log
+  encode-level: LowercaseColorLevelEncoder
+  stacktrace-key: stacktrace
+  show-line: true
+  log-in-console: true
+  retention-day: -1
