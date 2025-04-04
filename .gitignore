@@ -13,17 +13,18 @@ conf/config.ini
 *.out
 .idea
 .file/
-.log/
 # Dependency directories (remove the comment below to include it)
 # vendor/
 config/locales/config.yaml
 go.sum
 ci
 main
-logs
+log
 static/imgs/product
 
 config.yaml
+*.cicd.yaml
+/任务.md
 
 # tools
 /tools
