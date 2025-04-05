@@ -8,6 +8,7 @@ import (
 	"github.com/spectacleCase/ci-cd-engine/global"
 	system "github.com/spectacleCase/ci-cd-engine/models/system"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,34 +30,41 @@ func NewTaskManager(repoPath string, pollInterval time.Duration, queueSize int) 
 }
 
 // Start 启动任务管理器
-func Start(ctx context.Context) {
+func Start(ctx *context.Context) {
 	// 启动仓库轮询
 	go func() {
-		err := pollRepositoryChanges(ctx)
+		err := pollRepositoryChanges(*ctx)
 		if err != nil {
 
 		}
 	}()
 
 	// 启动任务消费者
-	go consumeTasks(ctx)
+	go consumeTasks(*ctx)
 }
 
 // AddTask 添加新任务
-func AddTask(task *system.Task) error {
+func AddTask(c context.Context, task *system.Task) error {
 	global.CTaskManager.Mu.Lock()
-
 	defer global.CTaskManager.Mu.Unlock()
 
+	// 检查内存中是否已存在
 	if _, exists := global.CTaskManager.Tasks[strconv.Itoa(int(task.ID))]; exists {
-		return errors.New("task already exists")
-
+		return errors.New("task already exists in manager")
 	}
 
+	// 设置新状态
 	task.Status = common.StatusQueued
 
+	err := global.NewDBClient(c).Model(system.Task{}).Where("id = ?", task.ID).Update("status", task.Status).Error
+	if err != nil {
+		return err
+	}
+
+	// 添加到管理器
 	global.CTaskManager.Tasks[strconv.Itoa(int(task.ID))] = task
 	global.CTaskManager.Queue <- task
+
 	return nil
 }
 
@@ -119,7 +127,7 @@ func pollRepositoryChanges(ctx context.Context) error {
 					//Payload: fmt.Sprintf(`{"commit_hash": "%s"}`, hash),
 				}
 
-				if err := AddTask(task); err != nil {
+				if err := AddTask(ctx, task); err != nil {
 					return err
 				}
 			}
@@ -135,33 +143,41 @@ func consumeTasks(ctx context.Context) {
 			return
 		case task := <-global.CTaskManager.Queue:
 			// 处理任务
-			processTask(task)
+			err := processTask(global.NewDBClient(ctx), task)
+			if err != nil {
+				return
+			}
 		}
 	}
 }
 
 // processTask 处理单个任务
-func processTask(task *system.Task) {
+func processTask(db *gorm.DB, task *system.Task) error {
 	if task.Status == common.StatusQueued {
 		global.CLog.Info("process task", zap.Uint("id", task.ID))
 		global.CTaskManager.Mu.Lock()
 		task.Status = common.StatusRunning
-		task.UpdatedAt = time.Now()
-		global.CTaskManager.Mu.Unlock()
-
-		// 模拟任务处理
+		err := db.Model(&system.Task{}).Where("id = ?", task.ID).Update("status", task.Status).Error
+		if err != nil {
+			return err
+		}
 		var newConfig system.CiCdConfig
 		if err := json.Unmarshal(task.Payload, &newConfig); err != nil {
 			global.CLog.Error("JSON反序列化失败", zap.String("payload", string(task.Payload)))
 		}
 		stageMap, _ := AnalyzeToMap(newConfig)
 		AssemblyLineProject(stageMap["Build"], stageMap["Deploy"])
-		global.CTaskManager.Mu.Lock()
 		task.Status = common.StatusCompleted
-		task.UpdatedAt = time.Now()
+		err = db.Model(&system.Task{}).Where("id = ?", task.ID).Update("status", task.Status).Error
+		if err != nil {
+			return err
+		}
 		global.CTaskManager.Mu.Unlock()
+		delete(global.CTaskManager.Tasks, strconv.Itoa(int(task.ID)))
 		global.CLog.Info("执行成功")
+
 	}
+	return nil
 }
 
 // getGitRepoHash 获取Git仓库当前hash

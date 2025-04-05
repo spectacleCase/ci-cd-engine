@@ -34,7 +34,7 @@ func loading() {
 	zap.ReplaceGlobals(global.CLog)
 	initialize.InitMySQL()
 	ctx, _ := system.InitTaskManager()
-	system.Start(ctx)
+	system.Start(&ctx)
 	//defer cancel()
 
 }

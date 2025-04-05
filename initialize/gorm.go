@@ -1,7 +1,7 @@
 package initialize
 
 import (
-	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spectacleCase/ci-cd-engine/config"
 	"github.com/spectacleCase/ci-cd-engine/global"
@@ -9,29 +9,38 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
-	"gorm.io/plugin/dbresolver"
-	"strings"
 	"time"
 )
 
 func InitMySQL() {
 	mConfig := config.Config.Mysql
-	pathRead := strings.Join([]string{mConfig.UserName, ":", mConfig.Password, "@tcp(", mConfig.DbHost, ":", mConfig.DbPort, ")/", mConfig.DbName, "?charset=" + mConfig.Charset + "&parseTime=true"}, "")
-	pathWrite := strings.Join([]string{mConfig.UserName, ":", mConfig.Password, "@tcp(", mConfig.DbHost, ":", mConfig.DbPort, ")/", mConfig.DbName, "?charset=" + mConfig.Charset + "&parseTime=true"}, "")
 
+	// 构造 DSN
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=true&loc=Local",
+		mConfig.UserName,
+		mConfig.Password,
+		mConfig.DbHost,
+		mConfig.DbPort,
+		mConfig.DbName,
+		mConfig.Charset,
+	)
+
+	// 设置 GORM 日志级别
 	var ormLogger logger.Interface
-	if gin.Mode() == "debug" {
+	if gin.Mode() == gin.DebugMode {
 		ormLogger = logger.Default.LogMode(logger.Info)
 	} else {
-		ormLogger = logger.Default
+		ormLogger = logger.Default.LogMode(logger.Warn)
 	}
+
+	// 初始化数据库连接
 	db, err := gorm.Open(mysql.New(mysql.Config{
-		DSN:                       pathRead, // DSN data source name
-		DefaultStringSize:         256,      // string 类型字段的默认长度
-		DisableDatetimePrecision:  true,     // 禁用 datetime 精度，MySQL 5.6 之前的数据库不支持
-		DontSupportRenameIndex:    true,     // 重命名索引时采用删除并新建的方式，MySQL 5.7 之前的数据库和 MariaDB 不支持重命名索引
-		DontSupportRenameColumn:   true,     // 用 `change` 重命名列，MySQL 8 之前的数据库和 MariaDB 不支持重命名列
-		SkipInitializeWithVersion: false,    // 根据版本自动配置
+		DSN:                       dsn,
+		DefaultStringSize:         256,
+		DisableDatetimePrecision:  true,
+		DontSupportRenameIndex:    true,
+		DontSupportRenameColumn:   true,
+		SkipInitializeWithVersion: false,
 	}), &gorm.Config{
 		Logger: ormLogger,
 		NamingStrategy: schema.NamingStrategy{
@@ -39,26 +48,21 @@ func InitMySQL() {
 		},
 	})
 	if err != nil {
-		panic(err)
+		panic("连接 MySQL 失败：" + err.Error())
 	}
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxIdleConns(20)  // 设置连接池，空闲
-	sqlDB.SetMaxOpenConns(100) // 打开
-	sqlDB.SetConnMaxLifetime(time.Second * 30)
+
+	// 连接池配置
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic("获取数据库连接池失败：" + err.Error())
+	}
+	sqlDB.SetMaxIdleConns(20)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Minute * 5)
+
+	// 设置建表选项（如果你使用 AutoMigrate）
+	db = db.Set("gorm:table_options", "charset=utf8mb4")
+
+	// 保存全局 DB 实例
 	global.CDB = db
-	_ = global.CDB.Use(dbresolver.
-		Register(dbresolver.Config{
-			// `db2` 作为 sources，`db3`、`db4` 作为 replicas
-			Sources:  []gorm.Dialector{mysql.Open(pathRead)},                         // 写操作
-			Replicas: []gorm.Dialector{mysql.Open(pathWrite), mysql.Open(pathWrite)}, // 读操作
-			Policy:   dbresolver.RandomPolicy{},                                      // sources/replicas 负载均衡策略
-		}))
-
-	global.CDB = global.CDB.Set("gorm:table_options", "charset=utf8mb4")
-
-}
-
-func NewDBClient(ctx context.Context) *gorm.DB {
-	db := global.CDB
-	return db.WithContext(ctx)
 }

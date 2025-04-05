@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spectacleCase/ci-cd-engine/common"
-	"github.com/spectacleCase/ci-cd-engine/initialize"
+	"github.com/spectacleCase/ci-cd-engine/global"
 	moSystem "github.com/spectacleCase/ci-cd-engine/models/system"
 	system "github.com/spectacleCase/ci-cd-engine/service/system"
 )
@@ -22,12 +22,11 @@ func DockerTest() gin.HandlerFunc {
 				Payload: jsonString,
 				Status:  common.StatusPending,
 			}
-			db := initialize.NewDBClient(c)
-			err = db.Create(task).Error
+			err = global.CDB.Create(task).Error
 			if err != nil {
 				return
 			}
-			_ = system.AddTask(task)
+			_ = system.AddTask(c, task)
 
 		}
 
