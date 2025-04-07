@@ -18,6 +18,13 @@ func NewRouter() *gin.Engine {
 
 	// docker 测试
 	v1.GET("/dockerTest", api.DockerTest())
+	v1.GET("/ResponseTest", api.ResponseTest())
 
+	v1.POST("/user/sign", api.Sign())
+
+	//authed := v1.Group("/")
+
+	// 需要鉴权
+	//v1.POST("/user/", api.DockerTest())
 	return r
 }

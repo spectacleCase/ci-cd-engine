@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spectacleCase/ci-cd-engine/common"
 	"github.com/spectacleCase/ci-cd-engine/global"
+	"github.com/spectacleCase/ci-cd-engine/models/common/response"
 	moSystem "github.com/spectacleCase/ci-cd-engine/models/system"
 	system "github.com/spectacleCase/ci-cd-engine/service/system"
 )
@@ -30,6 +31,12 @@ func DockerTest() gin.HandlerFunc {
 
 		}
 
-		c.JSON(200, gin.H{"message": "测试成功"})
+		response.Ok(c)
+	}
+}
+
+func ResponseTest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		response.Ok(c)
 	}
 }

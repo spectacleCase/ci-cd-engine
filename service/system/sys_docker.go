@@ -165,6 +165,9 @@ func CopyFilesToContainer(containerID, srcPath, destPath string) {
 	}
 
 	for _, file := range files {
+		if file.Name() == ".git" || file.IsDir() || file.Name() == ".idea" {
+			continue // 跳过 .git 和目录
+		}
 		filePath := fmt.Sprintf("%s/%s", srcPath, file.Name())
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {

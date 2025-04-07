@@ -19,6 +19,6 @@ type TaskManager struct {
 	Tasks        map[string]*Task
 	Queue        chan *Task
 	Mu           sync.RWMutex
-	RepoPath     string
+	RepoPath     []string
 	PollInterval time.Duration
 }

@@ -4,20 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/spectacleCase/ci-cd-engine/common"
 	"github.com/spectacleCase/ci-cd-engine/global"
 	system "github.com/spectacleCase/ci-cd-engine/models/system"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strconv"
 	"time"
 )
 
 // NewTaskManager 创建新的任务管理器
-func NewTaskManager(repoPath string, pollInterval time.Duration, queueSize int) *system.TaskManager {
+func NewTaskManager(repoPath []string, pollInterval time.Duration, queueSize int) *system.TaskManager {
 	if global.CTaskManager == nil {
 		return &system.TaskManager{
 			Tasks:        make(map[string]*system.Task),
@@ -107,26 +106,38 @@ func pollRepositoryChanges(ctx context.Context) error {
 			return ctx.Err()
 		case <-ticker.C:
 			// 检查仓库变化
-			hash, err := getGitRepoHash(global.CTaskManager.RepoPath)
+			commit, err := getGitCommitInfo(global.CTaskManager.RepoPath[0])
+			if err != nil {
+				global.CLog.Error("获取Git提交信息失败", zap.Error(err))
+			}
 			if err != nil {
 				continue
 			}
 
 			if lastHash == "" {
-				lastHash = hash
+				lastHash = commit.Hash.String()
 				continue
 			}
 
-			if hash != lastHash {
-				lastHash = hash
-
-				// 创建仓库变化任务
+			if commit.Hash.String() != lastHash {
+				lastHash = commit.Hash.String()
+				global.CLog.Info("Git提交信息",
+					zap.String("hash", commit.Hash.String()),
+					zap.String("author", commit.Author.Name),
+					zap.Time("date", commit.Author.When),
+					zap.String("message", commit.Message),
+				)
+				ciCdConfig, err := Analyze("file/ci-yaml/.cicd.yaml")
+				jsonString, _ := json.Marshal(ciCdConfig)
 				task := &system.Task{
-					Name: "repository_change",
-					// todo 添加任务
-					//Payload: fmt.Sprintf(`{"commit_hash": "%s"}`, hash),
+					Name:    commit.Message,
+					Payload: jsonString,
+					Status:  common.StatusPending,
 				}
+				err = global.CDB.Create(task).Error
+				if err != nil {
 
+				}
 				if err := AddTask(ctx, task); err != nil {
 					return err
 				}
@@ -180,35 +191,37 @@ func processTask(db *gorm.DB, task *system.Task) error {
 	return nil
 }
 
-// getGitRepoHash 获取Git仓库当前hash
-func getGitRepoHash(repoPath string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = repoPath
-
-	output, err := cmd.Output()
+func getGitCommitInfo(repoPath string) (*object.Commit, error) {
+	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	return string(output[:40]), nil
+	ref, err := repo.Head()
+	if err != nil {
+		return nil, err
+	}
+	return repo.CommitObject(ref.Hash())
 }
 
 // InitTaskManager 初始化任务管理器
 func InitTaskManager() (context.Context, context.CancelFunc) {
 	// 获取仓库路径，默认为当前目录
-	repoPath := os.Getenv("REPO_PATH")
-	if repoPath == "" {
-		repoPath, _ = os.Getwd()
+	//repoPath := os.Getenv("REPO_PATH")
+	//if repoPath == "" {
+	//	repoPath, _ = os.Getwd()
+	//}
+	//
+	//// 解析为绝对路径
+	//absRepoPath, err := filepath.Abs(repoPath)
+	//if err != nil {
+	//	global.CLog.Error("Error getting absolute path", zap.Error(err))
+	//}
+	//absRepoPathList := []string{absRepoPath}
+	absRepoPathList := []string{
+		"D:\\Workspace\\Python\\cicdDemo",
 	}
-
-	// 解析为绝对路径
-	absRepoPath, err := filepath.Abs(repoPath)
-	if err != nil {
-		global.CLog.Error("Error getting absolute path", zap.Error(err))
-	}
-
 	// 创建任务管理器
-	tm := NewTaskManager(absRepoPath, 30*time.Second, 100)
+	tm := NewTaskManager(absRepoPathList, 5*time.Second, 100)
 	global.CTaskManager = tm
 
 	// 创建上下文
