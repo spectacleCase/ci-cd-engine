@@ -2,7 +2,9 @@ package v1
 
 import (
 	"github.com/gin-gonic/gin"
+	systemRes "github.com/spectacleCase/ci-cd-engine/models/system/response"
 	"github.com/spectacleCase/ci-cd-engine/utils"
+	"time"
 
 	"github.com/spectacleCase/ci-cd-engine/global"
 	"github.com/spectacleCase/ci-cd-engine/models/common/response"
@@ -14,7 +16,7 @@ import (
 // Sign 用户注册
 func Sign() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var user request.Users
+		var user request.Sign
 		if err := c.ShouldBindJSON(&user); err != nil || !utils.EmailVerify(user.Email) || len(user.Username) < 6 {
 			global.CLog.Error("参数有误", zap.Any("err", err))
 			response.FailWithMessage("参数有误", c)
@@ -31,6 +33,33 @@ func Sign() gin.HandlerFunc {
 }
 
 // Login 用户登录
-func Login(c *gin.Context) {
+func Login() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var user request.Login
+		if err := c.ShouldBindJSON(&user); err != nil || !utils.EmailVerify(user.Email) {
+			global.CLog.Error("参数有误", zap.Any("err", err))
+			response.FailWithMessage("参数有误", c)
+			return
+		}
+		// 验证码校验
+		if user.CaptchaId != "" && user.Captcha != "" && store.Verify(user.CaptchaId, user.Captcha, false) {
+			userSer := system.GetUserSrv()
+			claims, loginResponse, err := userSer.Login(c.Request.Context(), user)
+			if err != nil {
+				response.FailWithMessage(err.Error(), c)
+				return
+			}
+			system.SetToken(c, loginResponse.Token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
+			response.OkWithDetailed(systemRes.LoginResponse{
+				User:      loginResponse.User,
+				Token:     loginResponse.Token,
+				ExpiresAt: claims.RegisteredClaims.ExpiresAt.Unix() * 1000,
+			}, "登录成功", c)
+			return
 
+		}
+		response.FailWithMessage("验证码错误", c)
+		return
+
+	}
 }

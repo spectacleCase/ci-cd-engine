@@ -9,9 +9,11 @@ var Config *Conf
 
 // Conf 全局配置
 type Conf struct {
-	System *System
-	Zap    *Zap
-	Mysql  *Mysql
+	System  *System
+	Zap     *Zap
+	Mysql   *Mysql
+	Captcha *Captcha
+	JWT     *JWT
 }
 
 // InitConfig 初始化配置

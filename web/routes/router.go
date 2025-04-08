@@ -16,11 +16,15 @@ func NewRouter() *gin.Engine {
 		})
 	}
 
-	// docker 测试
-	v1.GET("/dockerTest", api.DockerTest())
-	v1.GET("/ResponseTest", api.ResponseTest())
+	{
+		// docker 测试
+		v1.GET("/dockerTest", api.DockerTest())
+		v1.GET("/ResponseTest", api.ResponseTest())
 
-	v1.POST("/user/sign", api.Sign())
+		v1.POST("/user/sign", api.Sign())
+		v1.POST("/user/login", api.Login())
+		v1.POST("/common/captcha", api.Captcha())
+	}
 
 	//authed := v1.Group("/")
 
