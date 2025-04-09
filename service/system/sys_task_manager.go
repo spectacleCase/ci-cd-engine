@@ -6,9 +6,9 @@ import (
 	"errors"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/spectacleCase/ci-cd-engine/common"
 	"github.com/spectacleCase/ci-cd-engine/global"
 	system "github.com/spectacleCase/ci-cd-engine/models/system"
+	"github.com/spectacleCase/ci-cd-engine/pkg"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"strconv"
@@ -53,7 +53,7 @@ func AddTask(c context.Context, task *system.Task) error {
 	}
 
 	// 设置新状态
-	task.Status = common.StatusQueued
+	task.Status = pkg.StatusQueued
 
 	err := global.NewDBClient(c).Model(system.Task{}).Where("id = ?", task.ID).Update("status", task.Status).Error
 	if err != nil {
@@ -132,7 +132,7 @@ func pollRepositoryChanges(ctx context.Context) error {
 				task := &system.Task{
 					Name:    commit.Message,
 					Payload: jsonString,
-					Status:  common.StatusPending,
+					Status:  pkg.StatusPending,
 				}
 				err = global.CDB.Create(task).Error
 				if err != nil {
@@ -164,10 +164,10 @@ func consumeTasks(ctx context.Context) {
 
 // processTask 处理单个任务
 func processTask(db *gorm.DB, task *system.Task) error {
-	if task.Status == common.StatusQueued {
+	if task.Status == pkg.StatusQueued {
 		global.CLog.Info("process task", zap.Uint("id", task.ID))
 		global.CTaskManager.Mu.Lock()
-		task.Status = common.StatusRunning
+		task.Status = pkg.StatusRunning
 		err := db.Model(&system.Task{}).Where("id = ?", task.ID).Update("status", task.Status).Error
 		if err != nil {
 			return err
@@ -178,7 +178,7 @@ func processTask(db *gorm.DB, task *system.Task) error {
 		}
 		stageMap, _ := AnalyzeToMap(newConfig)
 		AssemblyLineProject(stageMap["Build"], stageMap["Deploy"])
-		task.Status = common.StatusCompleted
+		task.Status = pkg.StatusCompleted
 		err = db.Model(&system.Task{}).Where("id = ?", task.ID).Update("status", task.Status).Error
 		if err != nil {
 			return err

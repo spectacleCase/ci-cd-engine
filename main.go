@@ -33,6 +33,7 @@ func loading() {
 	global.CLog = core.Zap() // 初始化zap日志库
 	zap.ReplaceGlobals(global.CLog)
 	initialize.InitMySQL()
+	initialize.OtherInit()
 	ctx, _ := system.InitTaskManager()
 	system.Start(&ctx)
 	//defer cancel()

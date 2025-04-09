@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/spectacleCase/ci-cd-engine/core"
 	api "github.com/spectacleCase/ci-cd-engine/web/api/v1"
 )
 
@@ -18,17 +19,25 @@ func NewRouter() *gin.Engine {
 
 	{
 		// docker 测试
-		v1.GET("/dockerTest", api.DockerTest())
-		v1.GET("/ResponseTest", api.ResponseTest())
+		v1.GET("/test/dockerTest", api.DockerTest())
+		v1.GET("/test/ResponseTest", api.ResponseTest())
 
 		v1.POST("/user/sign", api.Sign())
 		v1.POST("/user/login", api.Login())
 		v1.POST("/common/captcha", api.Captcha())
 	}
 
-	//authed := v1.Group("/")
+	authed := v1.Group("/")
+	authed.Use(core.Auth())
 
 	// 需要鉴权
-	//v1.POST("/user/", api.DockerTest())
+	{
+		authed.POST("/project/project", api.Project())
+		authed.GET("/project/project", api.GetProject())
+		authed.PUT("/project/project", api.Project())
+		authed.DELETE("/project/project", api.DeleteProject())
+
+		authed.GET("/test/tokenTest", api.TokenTest())
+	}
 	return r
 }

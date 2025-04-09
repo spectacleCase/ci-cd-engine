@@ -1,4 +1,4 @@
-package common
+package pkg
 
 const (
 	StatusPending   = "PENDING"   // 等待中（刚创建）

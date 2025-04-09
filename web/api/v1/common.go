@@ -16,13 +16,6 @@ var store = base64Captcha.DefaultMemStore
 // Captcha  生成验证码
 func Captcha() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		//openCaptchaTimeOut := 3600
-		//key := c.ClientIP()
-		//v, ok := global.BlackCache.Get(key)
-		//if !ok {
-		//	global.BlackCache.Set(key, 1, time.Second*time.Duration(openCaptchaTimeOut))
-		//}
-
 		var oc bool
 		// 字符,公式,验证码配置
 		// 生成默认数字的driver

@@ -2,8 +2,10 @@ package system
 
 import (
 	"errors"
+	"github.com/gin-gonic/gin"
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/spectacleCase/ci-cd-engine/config"
+	"github.com/spectacleCase/ci-cd-engine/global"
 	"github.com/spectacleCase/ci-cd-engine/models/common/request"
 	"github.com/spectacleCase/ci-cd-engine/utils"
 	"time"
@@ -82,4 +84,19 @@ func (j *JWT) ParseToken(tokenString string) (*request.CustomClaims, error) {
 		}
 	}
 	return nil, TokenValid
+}
+
+func (j *JWT) GetToken(c *gin.Context) string {
+	token := c.Request.Header.Get("x-token")
+	if token == "" {
+		//j := NewJWT()
+		token, _ = c.Cookie("x-token")
+		claims, err := j.ParseToken(token)
+		if err != nil {
+			global.CLog.Error("重新写入cookie token失败,未能成功解析token,请检查请求头是否存在x-token且claims是否为规定结构")
+			return token
+		}
+		SetToken(c, token, int((claims.ExpiresAt.Unix()-time.Now().Unix())/60))
+	}
+	return token
 }
