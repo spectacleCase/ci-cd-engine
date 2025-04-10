@@ -118,3 +118,26 @@ func (usr *UserSrv) TokenNext(user *system.Users) (commonReq.CustomClaims, syste
 	}
 	return claims, logR, err
 }
+
+// GetUser 获取用户
+func (usr *UserSrv) GetUser(c context.Context, pageInfo commonReq.PageInfo, username, email string) (user *systemRes.User, err error) {
+	userDao := dao.NewUserDao(c)
+	users, exist, err := userDao.ExistOrNotByEmailAndName(username, email)
+	if err != nil {
+		err = errors.New("系统错误")
+		return
+	}
+	if exist {
+		responseUser := &systemRes.User{
+			Id:       users.ID,
+			Username: users.Username,
+			Email:    users.Email,
+			IsActive: users.IsActive,
+			IsAdmin:  users.IsAdmin,
+		}
+		return responseUser, nil
+	}
+
+	return nil, nil
+
+}

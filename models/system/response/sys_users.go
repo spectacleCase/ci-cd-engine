@@ -7,3 +7,11 @@ type LoginResponse struct {
 	Token     string       `json:"token"`
 	ExpiresAt int64        `json:"expiresAt"`
 }
+
+type User struct {
+	Id       uint   `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	IsAdmin  bool   `json:"isAdmin"`
+	IsActive bool   `json:"isActive"`
+}

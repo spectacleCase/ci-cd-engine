@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/spectacleCase/ci-cd-engine/global"
+	commonReq "github.com/spectacleCase/ci-cd-engine/models/common/request"
 	"github.com/spectacleCase/ci-cd-engine/models/dao"
 	"github.com/spectacleCase/ci-cd-engine/models/system"
 	"github.com/spectacleCase/ci-cd-engine/models/system/request"
@@ -68,6 +69,7 @@ func (psv *ProjectSrv) Project(project request.CreateProject, ctx *gin.Context) 
 
 }
 
+// DeleteProject 删除项目
 func (psv *ProjectSrv) DeleteProject(project request.DeleteProject, ctx *gin.Context) (err error) {
 	proDao := dao.NewProjectDao(ctx)
 	err = proDao.DeleteById(project.Id)
@@ -80,14 +82,24 @@ func (psv *ProjectSrv) DeleteProject(project request.DeleteProject, ctx *gin.Con
 }
 
 // GetProject 返回项目权限列表
-func (psv *ProjectSrv) GetProject(ctx *gin.Context) ([]system.ProjectPermissions, error) {
+func (psv *ProjectSrv) GetProject(pageInfo commonReq.PageInfo, ctx *gin.Context) (commonReq.PageInfo, []system.ProjectPermissions, error) {
 	proDao := dao.NewProjectDao(ctx)
 	id := GetUserID(ctx)
-
-	list, err := proDao.GetByIdProjectList(strconv.Itoa(int(id)))
+	list, info, err := proDao.GetByIdProjectList(strconv.Itoa(int(id)), pageInfo)
 	if err != nil {
 		global.CLog.Error("获取项目列表失败", zap.Any("err", err))
-		return nil, errors.New("获取项目列表失败")
+		return commonReq.PageInfo{}, nil, errors.New("获取项目列表失败")
 	}
-	return list, nil
+	return info, list, nil
+}
+
+// AddGrew 添加组员
+func (psv *ProjectSrv) AddGrew(ctx *gin.Context, crew request.AddCrew) (err error) {
+	proDao := dao.NewProjectDao(ctx)
+	err = proDao.AddCrew(crew)
+	if err != nil {
+		global.CLog.Error(err.Error())
+		return errors.New(err.Error())
+	}
+	return nil
 }

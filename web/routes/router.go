@@ -36,8 +36,10 @@ func NewRouter() *gin.Engine {
 		authed.GET("/project/project", api.GetProject())
 		authed.PUT("/project/project", api.Project())
 		authed.DELETE("/project/project", api.DeleteProject())
+		authed.POST("/project/project/addCrew", api.AddCrew())
 
 		authed.GET("/test/tokenTest", api.TokenTest())
+		authed.GET("/user/user", api.GetUser())
 	}
 	return r
 }

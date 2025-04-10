@@ -2,6 +2,7 @@ package v1
 
 import (
 	"github.com/gin-gonic/gin"
+	commonReq "github.com/spectacleCase/ci-cd-engine/models/common/request"
 	systemRes "github.com/spectacleCase/ci-cd-engine/models/system/response"
 	"github.com/spectacleCase/ci-cd-engine/utils"
 	"time"
@@ -59,6 +60,30 @@ func Login() gin.HandlerFunc {
 
 		}
 		response.FailWithMessage("验证码错误", c)
+		return
+
+	}
+}
+
+// GetUser 获取用户
+func GetUser() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var pageInfo commonReq.PageInfo
+		pageInfo = commonReq.NewPageInfo(c)
+
+		userSer := system.GetUserSrv()
+		username := c.DefaultQuery("username", "")
+		email := c.DefaultQuery("email", "")
+		if !utils.EmailVerify(email) {
+			response.FailWithMessage("邮箱格式有问题", c)
+			return
+		}
+		user, err := userSer.GetUser(c.Request.Context(), pageInfo, username, email)
+		if err != nil {
+			response.FailWithMessage(err.Error(), c)
+			return
+		}
+		response.OkWithData(user, c)
 		return
 
 	}
