@@ -8,7 +8,6 @@ import (
 
 func NewRouter() *gin.Engine {
 	r := gin.Default()
-
 	v1 := r.Group("api/v1")
 
 	{
@@ -40,6 +39,7 @@ func NewRouter() *gin.Engine {
 
 		authed.GET("/test/tokenTest", api.TokenTest())
 		authed.GET("/user/user", api.GetUser())
+		authed.PUT("/user/user", api.Update())
 	}
 	return r
 }

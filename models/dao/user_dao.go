@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/spectacleCase/ci-cd-engine/global"
 	"github.com/spectacleCase/ci-cd-engine/models/system"
+	"github.com/spectacleCase/ci-cd-engine/models/system/request"
 	"gorm.io/gorm"
 )
 
@@ -69,4 +70,10 @@ func (dao *UserDao) ExistOrNotByUserName(userName string) (user *system.Users, e
 // CreateUser 创建用户
 func (dao *UserDao) CreateUser(user *system.Users) error {
 	return dao.DB.Model(&system.Users{}).Create(&user).Error
+}
+
+// Update 修改
+func (dao *UserDao) Update(update request.Update) (*system.Users, error) {
+
+	return &system.Users{}, nil
 }

@@ -19,6 +19,12 @@ type Cutter struct {
 	mutex        *sync.RWMutex // 读写锁
 }
 
+// rpc 注册中心，配置中心，监控，                       mapreduce(大数据分布式计算)
+// 兜底 -> 前端拦截（10小时时间拦截）—> MQ异步爬虫（状态存储） ->
+// 商业化，（小程序，动态js商业化扩展化）
+// 动态js 热部署，不需发版，快速bug修复
+//
+
 type CutterOption func(*Cutter)
 
 // CutterWithLayout 时间格式

@@ -88,3 +88,22 @@ func GetUser() gin.HandlerFunc {
 
 	}
 }
+
+// Update 修改用户
+func Update() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var update request.Update
+		if err := c.ShouldBindJSON(&update); err != nil {
+			global.CLog.Error("参数有误", zap.Any("err", err))
+			response.FailWithMessage("参数有误", c)
+			return
+		}
+		userSer := system.GetUserSrv()
+		user, err := userSer.Update(c.Request.Context(), update)
+		if err != nil {
+			response.FailWithMessage(err.Error(), c)
+			return
+		}
+		response.OkWithData(user, c)
+	}
+}

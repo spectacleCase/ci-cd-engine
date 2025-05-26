@@ -141,3 +141,16 @@ func (usr *UserSrv) GetUser(c context.Context, pageInfo commonReq.PageInfo, user
 	return nil, nil
 
 }
+
+// Update 修改用户
+func (usr *UserSrv) Update(c context.Context, update request.Update) (user *systemRes.User, err error) {
+	//userDao := dao.NewUserDao(c)
+	// 修改权限 -> admin
+	if update.IsAdmin || update.IsActive {
+		//userDao := dao.NewUserDao(c)
+	}
+
+	//users, exist, err := userDao.ExistOrNotByEmailAndName(username, email)
+
+	return &systemRes.User{}, nil
+}
